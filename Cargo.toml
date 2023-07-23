@@ -1,0 +1,41 @@
+[package]
+name = "cipher-utils"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[profile.dev]
+overflow-checks = false
+
+[profile.release]
+strip = "symbols"
+panic = "abort"
+
+[[example]]
+name = "xxtea-cli"
+path = "examples/xxtea-cli/main.rs"
+test = true
+
+[[example]]
+name = "xxtea-cli-bootstrap"
+path = "examples/xxtea-cli/bootstrap.rs"
+
+[dependencies]
+cipher = { version = "0.4.4", features = [
+  "block-padding",
+  "rand_core",
+  "std",
+  "dev",
+  "zeroize",
+] }
+hex = "0.4.3"
+rand = "0.8.5"
+clap = { version = "4.3.12", features = ["derive"] }
+regex = { version = "1.9.1", features = ["use_std"] }
+
+[dev-dependencies]
+byteorder = "1.4.3"
+hex-literal = "0.4.1"
+pcbc = { version = "0.1.2", features = ["block-padding", "std", "zeroize"] }
+zeroize = { version = "1.6.0", features = ["zeroize_derive", "derive", "std"] }
