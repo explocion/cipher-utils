@@ -3,11 +3,10 @@ type: ssh
 name: default
 server:
   host:
-    from_secret: org_host
+    from_secret: focs.ji.sjtu.edu.cn:2475
   user: g2
   ssh_key:
-    from_secret: org_key
-  port: 2475
+    from_secret: sshkey
 steps:
   - name: pre-checks
     commands:
