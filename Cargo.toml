@@ -37,5 +37,6 @@ regex = { version = "1.9.1", features = ["use_std"] }
 [dev-dependencies]
 byteorder = "1.4.3"
 hex-literal = "0.4.1"
-pcbc = { version = "0.1.2", features = ["block-padding", "std", "zeroize"] }
 zeroize = { version = "1.6.0", features = ["zeroize_derive", "derive", "std"] }
+include-crypt = { version = "0.1.1", features = ["compression"] }
+pcbc = { version = "0.1.2", features = ["block-padding", "std", "zeroize"] }

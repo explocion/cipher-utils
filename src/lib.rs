@@ -1,17 +1,17 @@
 pub mod cli;
 pub mod oracle;
 
-use core::fmt;
-
 pub use cipher;
 pub use hex;
+
+use core::fmt;
 
 use cipher::block_padding::{RawPadding, UnpadError};
 use cipher::generic_array::GenericArray;
 use cipher::rand_core::{CryptoRng, RngCore};
 use cipher::{
     BlockCipher, BlockDecryptMut, BlockEncryptMut, BlockSizeUser, Iv, IvSizeUser, Key, KeyInit,
-    KeyIvInit,
+    KeyIvInit, KeySizeUser,
 };
 
 #[derive(Clone, Debug)]
@@ -32,31 +32,8 @@ impl fmt::Display for FromBytesError {
 #[cfg(not(no_std))]
 impl std::error::Error for FromBytesError {}
 
-#[macro_export]
-macro_rules! impl_cipher_from_hex {
-    (
-        <$($N:ident$(:$b0:ident$(+$b:ident)*)?),*>
-        $cipher:ident, $generic:ident
-    ) => {
-        impl<$($N$(:$b0$(+$b)*)?),*> hex::FromHex for $cipher<$($N),*> {
-            type Error = $crate::FromBytesError;
-
-            fn from_hex<$generic: AsRef<[u8]>>(hex: $generic) -> Result<Self, Self::Error> {
-                use core::cmp::Ordering;
-                use cipher::{generic_array::GenericArray, typenum::Unsigned};
-                let key_size = <<Self as cipher::KeySizeUser>::KeySize as Unsigned>::to_usize();
-                let bytes = hex.as_ref();
-                match bytes.len().cmp(&key_size) {
-                    Ordering::Less => Err(Self::Error::NoEnoughBytes),
-                    Ordering::Equal => Ok(Self::new(GenericArray::from_slice(bytes))),
-                    Ordering::Greater => Err(Self::Error::TooMuchBytes),
-                }
-            }
-        }
-    };
-    ($cipher:ident) => {
-        impl_cipher_from_hex!(<> $cipher, $generic);
-    };
+pub trait DefaultKey: KeySizeUser {
+    fn default_key() -> Key<Self>;
 }
 
 #[derive(Debug, Clone)]
@@ -77,15 +54,11 @@ impl fmt::Display for PaddedDecryptError {
 #[cfg(not(no_std))]
 impl std::error::Error for PaddedDecryptError {}
 
-pub trait PaddedEncrypt<'a>: KeyInit + BlockEncryptMut + BlockCipher
-where
-    Self: 'a,
-    Key<Self::Encryptor>: From<&'a Self>,
-{
+pub trait PaddedEncrypt: KeyInit + BlockEncryptMut + BlockCipher {
     type Encryptor: KeyIvInit + BlockEncryptMut;
 
-    fn padded_encrypt_message<P: RawPadding>(
-        &'a mut self,
+    fn padded_encrypt<P: RawPadding>(
+        key_bytes: &Key<Self>,
         rng: impl CryptoRng + RngCore,
         plaintext: &[u8],
     ) -> Vec<u8> {
@@ -93,27 +66,24 @@ where
         let mut buf = Vec::with_capacity(ct_len);
         buf.resize(ct_len, 0);
         let iv = Self::Encryptor::generate_iv(rng);
-        self.encrypt_block_b2b_mut(
+        let mut encryptor = Self::new(key_bytes);
+        encryptor.encrypt_block_b2b_mut(
             GenericArray::from_slice(iv.as_slice()),
             GenericArray::from_mut_slice(&mut buf[..Self::block_size()]),
         );
-        let encryptor = Self::Encryptor::new(&Key::<Self::Encryptor>::from(self), &iv);
+        let encryptor = Self::Encryptor::new(GenericArray::from_slice(key_bytes.as_slice()), &iv);
         encryptor
             .encrypt_padded_b2b_mut::<P>(&plaintext, &mut buf[Self::block_size()..])
-            .expect("Failed to pad the input plain text");
+            .expect("failed to pad the input plain text");
         buf
     }
 }
 
-pub trait PaddedDecrypt<'a>: KeyInit + BlockDecryptMut + BlockCipher
-where
-    Self: 'a,
-    Key<Self::Decryptor>: From<&'a Self>,
-{
+pub trait PaddedDecrypt: KeyInit + BlockDecryptMut + BlockCipher {
     type Decryptor: KeyIvInit + BlockDecryptMut;
 
-    fn padded_decrypt_message<P: RawPadding>(
-        &'a mut self,
+    fn padded_decrypt<P: RawPadding>(
+        key_bytes: &Key<Self>,
         ciphertext: &[u8],
     ) -> Result<Vec<u8>, PaddedDecryptError> {
         if ciphertext.len() < Self::block_size() {
@@ -122,12 +92,15 @@ where
             let (iv, ciphertext) = ciphertext.split_at(Self::Decryptor::block_size());
             let mut decrypted_iv: Iv<Self::Decryptor> =
                 GenericArray::<u8, <Self::Decryptor as IvSizeUser>::IvSize>::default();
-            self.decrypt_block_b2b_mut(
+            let mut decryptor = Self::new(key_bytes);
+            decryptor.decrypt_block_b2b_mut(
                 GenericArray::from_slice(iv),
                 GenericArray::from_mut_slice(decrypted_iv.as_mut_slice()),
             );
-            let decryptor =
-                Self::Decryptor::new(&Key::<Self::Decryptor>::from(self), &decrypted_iv);
+            let decryptor = Self::Decryptor::new(
+                GenericArray::from_slice(key_bytes.as_slice()),
+                &decrypted_iv,
+            );
             decryptor
                 .decrypt_padded_vec_mut::<P>(ciphertext)
                 .map_err(|e| PaddedDecryptError::UnpadError(e))
