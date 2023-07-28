@@ -3,7 +3,7 @@ type: ssh
 name: default
 server:
   host:
-    from_secret: focs.ji.sjtu.edu.cn:2475
+    from_secret: 202.121.180.24:2475
   user: g2
   ssh_key:
     from_secret: sshkey
