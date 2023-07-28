@@ -2,8 +2,7 @@ kind: pipeline
 type: ssh
 name: default
 server:
-  host:
-    from_secret: 202.121.180.24:2475
+  host: 202.121.180.24:2475
   user: g2
   ssh_key:
     from_secret: sshkey
