@@ -64,7 +64,7 @@ mod tests {
     #[test]
     fn composition_id() {
         for _ in 0..10 {
-            check_composition_identity::<Caesar>(thread_rng());
+            check_composition_identity::<Caesar, _>(thread_rng);
         }
     }
 
