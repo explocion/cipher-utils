@@ -39,9 +39,11 @@ pub trait ChallengeCipher: EncryptBytes + DecryptBytes {
                 secret_message,
                 key: path,
             } => {
-                let key = path
-                    .map(|p| fs::read_to_string(AsRef::<Path>::as_ref(&p)).unwrap())
-                    .map(|k| Key::<Self>::clone_from_slice(&BASE64_URL_SAFE.decode(k).unwrap()))
+                let content = path.map(|p| fs::read_to_string(&p).unwrap());
+                let key = content
+                    .map(|k| {
+                        Key::<Self>::clone_from_slice(&BASE64_URL_SAFE.decode(k.trim()).unwrap())
+                    })
                     .unwrap_or(Self::secret().key);
                 let encrypted_message = Self::encrypt_bytes(&key, secret_message.clone());
                 println!("{}", BASE64_URL_SAFE.encode(encrypted_message));
@@ -56,9 +58,11 @@ pub trait ChallengeCipher: EncryptBytes + DecryptBytes {
                 encrypted_message,
                 key: path,
             } => {
-                let key = path
-                    .map(|p| fs::read_to_string(AsRef::<Path>::as_ref(&p)).unwrap())
-                    .map(|k| Key::<Self>::clone_from_slice(&BASE64_URL_SAFE.decode(k).unwrap()))
+                let content = path.map(|p| fs::read_to_string(&p).unwrap());
+                let key = content
+                    .map(|k| {
+                        Key::<Self>::clone_from_slice(&BASE64_URL_SAFE.decode(k.trim()).unwrap())
+                    })
                     .unwrap_or(Self::secret().key);
                 let secret_message = Self::decrypt_bytes(&key, encrypted_message.clone()).unwrap();
                 let secret_message = String::from_utf8(secret_message.into()).unwrap();
