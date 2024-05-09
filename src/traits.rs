@@ -62,6 +62,7 @@ pub trait ChallengeCipher: EncryptBytes + DecryptBytes {
                     .unwrap_or(Self::secret().key);
                 let secret_message = Self::decrypt_bytes(&key, encrypted_message.clone()).unwrap();
                 let secret_message = String::from_utf8(secret_message.into()).unwrap();
+                crate::cli::parse_message(&secret_message).unwrap();
                 println!("{}", secret_message);
             }
         }
