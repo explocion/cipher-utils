@@ -3,7 +3,7 @@ use crate::cipher::{rand_core::CryptoRngCore, Key, KeyInit};
 use crate::cli::Command;
 
 use base64::prelude::*;
-use std::{error::Error, fs, path::Path};
+use std::{error::Error, fs};
 
 #[derive(Debug, Clone)]
 pub struct Secret<T: DecryptBytes> {
@@ -30,6 +30,8 @@ pub trait DecryptBytes: KeyInit {
 pub trait ChallengeCipher: EncryptBytes + DecryptBytes {
     fn secret() -> Secret<Self>;
 
+    /// feel free to override this implementation
+    /// this one has side-channel vulnerabilities
     fn execute(cmd: Command, rng: impl CryptoRngCore) {
         match cmd {
             Command::Generate => {
