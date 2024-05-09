@@ -1,5 +1,6 @@
 pub use bytes;
 pub use cipher;
+pub use rand;
 
 pub mod cli;
 pub mod traits;

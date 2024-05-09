@@ -24,7 +24,11 @@ cipher = { version = "0.4.4", features = [
 ] }
 once_cell = "1.19.0"
 regex = { version = "1.10.4", features = ["use_std"] }
+rand = "0.8.5"
 
 [features]
 default = ["dev"]
 dev = []
+
+[[example]]
+name = "caesar"
