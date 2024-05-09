@@ -1,99 +1,66 @@
-pub use clap::Parser;
+use crate::bytes::Bytes;
 
-use clap::Args;
+use base64::prelude::*;
+use clap::{Parser, Subcommand};
 use regex::Regex;
-use std::{fmt, path::PathBuf};
+use std::{error::Error, fmt, path::PathBuf};
 
-#[derive(Debug, Clone, PartialEq)]
-enum ParseCharacterError {
-    IllegalCharacter,
-    RegexFault(regex::Error),
+#[derive(Debug, Default)]
+pub struct IllegalCharacter;
+
+impl IllegalCharacter {
+    pub fn new() -> Self {
+        Self::default()
+    }
 }
 
-impl fmt::Display for ParseCharacterError {
+impl fmt::Display for IllegalCharacter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::IllegalCharacter => {
-                write!(f, "illegal character detected in the argument value")
-            }
-            Self::RegexFault(e) => e.fmt(f),
-        }
+        write!(f, "illegal character")
     }
 }
 
-impl std::error::Error for ParseCharacterError {}
+impl Error for IllegalCharacter {}
 
-type Blob = Vec<u8>;
+pub fn parse_message(message: &str) -> Result<Bytes, IllegalCharacter> {
+    use once_cell::sync::Lazy;
+    static RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[0-9a-zA-Z\,\.\;\?\!\(\)]+$").unwrap());
 
-fn parse_characters(value: &str) -> Result<Blob, ParseCharacterError> {
-    let re = Regex::new(r"^[0-9a-zA-Z\,\.\;\?\!\(\)]+$")
-        .map_err(|e| ParseCharacterError::RegexFault(e))?;
-    if re.is_match(value) {
-        Ok(value.as_bytes().to_vec())
-    } else {
-        Err(ParseCharacterError::IllegalCharacter)
-    }
+    RE.is_match(message)
+        .then_some(message)
+        .map(|message| message.as_bytes().to_vec().into())
+        .ok_or(IllegalCharacter::new())
 }
 
-#[inline]
-fn parse_hex(value: &str) -> Result<Blob, hex::FromHexError> {
-    hex::decode(value)
+pub fn parse_base64(value: &str) -> Result<Bytes, base64::DecodeError> {
+    BASE64_URL_SAFE.decode(value).map(|bytes| bytes.into())
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Args)]
-#[group(required = true, multiple = false)]
-struct Action {
-    /// generate key for the cipher
-    #[arg(short, long)]
-    generate: bool,
-
-    /// encrypt plaintext with cipher, optionally with specified key
-    #[arg(short, long, value_parser = parse_characters, group = "cipher")]
-    encrypt: Option<Blob>,
-
-    /// decrypt ciphertext with cipher, optionally with specified key
-    #[arg(short, long, value_parser = parse_hex, group = "cipher")]
-    decrypt: Option<Blob>,
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Parser)]
-#[command(author, version, about, long_about)]
-pub struct Cli {
-    #[command(flatten)]
-    action: Action,
-
-    /// optionally specify the key, or default key would be used
-    /// key must be specified when decrypting challenge ciphertext
-    #[arg(short, long, requires = "cipher")]
-    key: Option<PathBuf>,
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Subcommand)]
 pub enum Command {
     Generate,
-    Encrypt(Blob, Option<PathBuf>),
-    Decrypt(Blob, Option<PathBuf>),
+    Encrypt {
+        #[arg(value_parser = parse_message)]
+        secret_message: Bytes,
+        #[arg(short, long)]
+        key: Option<PathBuf>,
+    },
+    Decrypt {
+        #[arg(value_parser = parse_base64)]
+        encrypted_message: Bytes,
+        #[arg(short, long)]
+        key: Option<PathBuf>,
+    },
 }
 
-impl From<Cli> for Command {
-    fn from(value: Cli) -> Self {
-        match value.action {
-            Action {
-                generate: true,
-                encrypt: _,
-                decrypt: _,
-            } => Command::Generate,
-            Action {
-                generate: _,
-                encrypt: Some(m),
-                decrypt: _,
-            } => Command::Encrypt(m, value.key),
-            Action {
-                generate: _,
-                encrypt: _,
-                decrypt: Some(c),
-            } => Command::Decrypt(c, value.key),
-            _ => panic!("Should be impossible, but Clap parser failed!"),
-        }
-    }
+#[derive(Debug, PartialEq, Eq, Parser)]
+#[command(author, version, about, long_about)]
+#[command(propagate_version = true)]
+struct Cli {
+    #[command(subcommand)]
+    command: Command,
+}
+
+pub fn command() -> Command {
+    Cli::parse().command
 }
