@@ -33,7 +33,7 @@ pub fn parse_message(message: &str) -> Result<Bytes, IllegalCharacter> {
 }
 
 pub fn parse_base64(value: &str) -> Result<Bytes, base64::DecodeError> {
-    BASE64_URL_SAFE.decode(value).map(|bytes| bytes.into())
+    BASE64_STANDARD.decode(value).map(|bytes| bytes.into())
 }
 
 #[derive(Debug, PartialEq, Eq, Subcommand)]
