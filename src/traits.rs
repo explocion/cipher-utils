@@ -35,7 +35,7 @@ pub trait ChallengeCipher: EncryptBytes + DecryptBytes {
     fn execute(cmd: Command, rng: impl CryptoRngCore) {
         match cmd {
             Command::Generate => {
-                println!("{}", BASE64_URL_SAFE.encode(Self::generate_key(rng)))
+                println!("{}", BASE64_STANDARD.encode(Self::generate_key(rng)))
             }
             Command::Encrypt {
                 secret_message,
@@ -44,11 +44,11 @@ pub trait ChallengeCipher: EncryptBytes + DecryptBytes {
                 let content = path.map(|p| fs::read_to_string(&p).unwrap());
                 let key = content
                     .map(|k| {
-                        Key::<Self>::clone_from_slice(&BASE64_URL_SAFE.decode(k.trim()).unwrap())
+                        Key::<Self>::clone_from_slice(&BASE64_STANDARD.decode(k.trim()).unwrap())
                     })
                     .unwrap_or(Self::secret().key);
                 let encrypted_message = Self::encrypt_bytes(&key, secret_message.clone());
-                println!("{}", BASE64_URL_SAFE.encode(encrypted_message));
+                println!("{}", BASE64_STANDARD.encode(encrypted_message));
             }
             Command::Decrypt {
                 encrypted_message,
@@ -63,7 +63,7 @@ pub trait ChallengeCipher: EncryptBytes + DecryptBytes {
                 let content = path.map(|p| fs::read_to_string(&p).unwrap());
                 let key = content
                     .map(|k| {
-                        Key::<Self>::clone_from_slice(&BASE64_URL_SAFE.decode(k.trim()).unwrap())
+                        Key::<Self>::clone_from_slice(&BASE64_STANDARD.decode(k.trim()).unwrap())
                     })
                     .unwrap_or(Self::secret().key);
                 let secret_message = Self::decrypt_bytes(&key, encrypted_message.clone()).unwrap();

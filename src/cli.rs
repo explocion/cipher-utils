@@ -24,7 +24,7 @@ impl Error for IllegalCharacter {}
 
 pub fn parse_message(message: &str) -> Result<Bytes, IllegalCharacter> {
     use once_cell::sync::Lazy;
-    static RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[0-9a-zA-Z\,\.\;\?\!\(\)\_\/\+\-\=]+$").unwrap());
+    static RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[0-9a-zA-Z\,\.\;\?\!\(\)\+\/\=]+$").unwrap());
 
     RE.is_match(message)
         .then_some(message)
